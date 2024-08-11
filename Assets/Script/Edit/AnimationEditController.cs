@@ -3,14 +3,21 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+
 
 namespace MyTest
 {
     public class AnimationEditController : MonoBehaviour
     {
+
+        public ManageRigLayer manageRigLayer; // Reference to ManageRigLayer script
+
         [Header("===Config Setting===")]
         public float FPS = 30;
-        public string JsonFilePath = "D://temp//animation_data.json"; // Use the same file for loading and saving
+        public string JsonFilePath = "D://temp//animation_data.json"; // Use this file for loading
+        public string ReplaceJsonFilePath = "D://temp//replace.json"; // Use this file for saving replaced data
 
         [Header("===Source Avatar===")]
         public Animator sourceAnimator;
@@ -26,42 +33,17 @@ namespace MyTest
         private HashSet<int> replacedFrames = new HashSet<int>(); // Track replaced frames
         private bool isPaused = false; // Track pause state
 
+        public Text frameText;  // UI Text for displaying the current frame
+        public Text replacedFramesText;  // UI Text for displaying replaced frames
+        public Button saveButton;  // UI Button to save the current frame
+        public Button replaySceneButton;  // UI Button to load the next scene
+
+        public Sprite SaveSprite;  // Assign this in the Inspector
+        public Sprite SendSprite; // Assign this in the Inspector
+
+        
+
         public static HashSet<int> ReplacedFrameIndices { get; private set; } = new HashSet<int>(); // Static property to expose the replaced frame indices
-
-        void OnGUI()
-        {
-            GUI.skin.button.border = new RectOffset(8, 8, 8, 8);
-            GUI.skin.button.margin = new RectOffset(0, 0, 0, 0);
-            GUI.skin.button.padding = new RectOffset(0, 0, 0, 0);
-
-            int BtnHeight = 40;
-            int BtnWidth = 150;
-
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-
-            // Display the current frame index
-            GUILayout.Label($"Current Frame: {currentFrameIndex}/{motionData?.motionFrames.Count ?? 0}", GUILayout.Width(BtnWidth), GUILayout.Height(BtnHeight));
-
-            // Display the replaced frames
-            GUILayout.Label($"Replaced Frames: {string.Join(", ", replacedFrames)}", GUILayout.Width(BtnWidth * 2), GUILayout.Height(BtnHeight));
-
-            // Button to replace the current frame with the current data
-            if (GUILayout.Button("Save", GUILayout.Width(BtnWidth), GUILayout.Height(BtnHeight)))
-            {
-                ReplaceCurrentFrame();
-            }
-
-            // Button to load the next scene
-            if (GUILayout.Button("Replay Scene", GUILayout.Width(BtnWidth), GUILayout.Height(BtnHeight)))
-            {
-                SaveData();
-                SceneManager.LoadScene(2); // Replace with your next scene name
-            }
-
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-        }
 
         void Start()
         {
@@ -73,16 +55,19 @@ namespace MyTest
             sourceMusclesValue = sourcePose.muscles;
             sourceMusclesName = HumanTrait.MuscleName;
 
-            LoadData(); // Load data at the start
+            LoadData(); // Load data at the start from JsonFilePath
+
+            // Add listeners to UI buttons
+            saveButton.onClick.AddListener(ReplaceCurrentFrame);
+            replaySceneButton.onClick.AddListener(() => SaveAndLoadScene(2));
+
+            saveButton.image.sprite = SaveSprite;
+            replaySceneButton.image.sprite = SendSprite;
         }
 
         void Update()
         {
-            // Check for pause toggle using the space key
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                isPaused = !isPaused;
-            }
+            
 
             if (!isPaused && motionData != null && motionData.motionFrames.Count > 0)
             {
@@ -98,11 +83,10 @@ namespace MyTest
                     sourcePose.muscles[i] = currentFrame.muscleValues[i];
                 }
                 sourcePoseHandler.SetHumanPose(ref sourcePose);
-            }
-            else if (isPaused)
-            {
-                // While paused, update the sourcePose with the current pose
-                sourcePoseHandler.GetHumanPose(ref sourcePose);
+
+                // Update the UI Text components
+                frameText.text = $"Frame: {currentFrameIndex}/{motionData.motionFrames.Count}";
+                replacedFramesText.text = $"Replaced Frames: {string.Join(", ", replacedFrames)}";
             }
         }
 
@@ -133,17 +117,21 @@ namespace MyTest
         {
             if (motionData != null && motionData.motionFrames.Count > 0)
             {
-                // Replace the current frame with the current pose data
+                // Create a temporary HumanPose to avoid modifying the internal state of sourcePoseHandler
+                HumanPose tempPose = new HumanPose();
+                sourcePoseHandler.GetHumanPose(ref tempPose);
+
+                // Replace the current frame with the current pose data from tempPose
                 MuscleValues updatedValue = new MuscleValues
                 {
-                    muscleValues = new float[sourcePose.muscles.Length],
+                    muscleValues = new float[tempPose.muscles.Length],
                     position = sourceAnimator.gameObject.transform.localPosition,
                     rotation = sourceAnimator.gameObject.transform.localRotation
                 };
 
-                for (int i = 0; i < sourcePose.muscles.Length; ++i)
+                for (int i = 0; i < tempPose.muscles.Length; ++i)
                 {
-                    updatedValue.muscleValues[i] = sourcePose.muscles[i];
+                    updatedValue.muscleValues[i] = tempPose.muscles[i];
                 }
 
                 // Overwrite the current frame
@@ -155,7 +143,7 @@ namespace MyTest
                 replacedFrames.Add(currentFrameIndex);
                 ReplacedFrameIndices = replacedFrames; // Update the static property
 
-                SaveData(); // Ensure the data is saved immediately after replacement
+                SaveData(ReplaceJsonFilePath); // Save to the ReplaceJsonFilePath
             }
             else
             {
@@ -163,19 +151,27 @@ namespace MyTest
             }
         }
 
-        private void SaveData()
+
+        private void SaveData(string path)
         {
             if (motionData != null)
             {
                 string jsonData = JsonUtility.ToJson(motionData);
-                File.WriteAllText(JsonFilePath, jsonData);
-                Debug.Log("Data saved to: " + JsonFilePath);
+                File.WriteAllText(path, jsonData);
+                Debug.Log("Data saved to: " + path);
                 Debug.Log("Saved JSON: " + jsonData);
             }
             else
             {
                 Debug.LogError("No data to save.");
             }
+        }
+
+        private void SaveAndLoadScene(int sceneIndex)
+        {
+            SaveData(ReplaceJsonFilePath);
+            isPaused = false;
+            SceneManager.LoadScene(sceneIndex);
         }
     }
 }
