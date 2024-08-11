@@ -25,13 +25,12 @@ namespace MyTest
         [Header("===UI Elements===")]
         public Button recordButton;
         public Button editSceneButton;
-        public Button ReplayButton;
+        public Button replayButton;
 
         public Sprite recordOnSprite;  // Assign this in the Inspector
         public Sprite recordOffSprite; // Assign this in the Inspector
-        public Sprite SendSprite; // Assign this in the Inspector
-        public Sprite ReplaySprite;
-
+        public Sprite sendSprite; // Assign this in the Inspector
+        public Sprite replaySprite;
 
         private MotionData motionData;
         private bool onRecording = false;
@@ -51,11 +50,11 @@ namespace MyTest
             // Attach methods to button click events
             recordButton.onClick.AddListener(ToggleRecording);
             editSceneButton.onClick.AddListener(SaveAndLoadEditScene);
+            replayButton.onClick.AddListener(LoadReplayScene);  // Attach new method to replay button
+
             recordButton.image.sprite = recordOffSprite;
-            editSceneButton.image.sprite = SendSprite;
-            ReplayButton.image.sprite = ReplaySprite;
-
-
+            editSceneButton.image.sprite = sendSprite;
+            replayButton.image.sprite = replaySprite;
         }
 
         void Update()
@@ -125,6 +124,11 @@ namespace MyTest
                 File.WriteAllText(ReplaceJsonFilePath, JsonUtility.ToJson(motionData));
                 Debug.Log("Data saved to: " + ReplaceJsonFilePath);
             }
+        }
+
+        private void LoadReplayScene()
+        {
+            SceneManager.LoadScene(4); // Loads Scene 4 when replay button is clicked
         }
     }
 

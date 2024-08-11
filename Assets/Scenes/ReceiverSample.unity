@@ -580,9 +580,11 @@ MonoBehaviour:
   sourceMusclesName: []
   recordButton: {fileID: 29564687}
   editSceneButton: {fileID: 1511705806}
-  recordOnSprite: {fileID: 21300000, guid: 4d98da27b4dc5a04fabe60609f9b1ad2, type: 3}
-  recordOffSprite: {fileID: 21300000, guid: 15b13f88f97838a4b9378fea86a28e89, type: 3}
-  SendSprite: {fileID: 0}
+  replayButton: {fileID: 1324895481}
+  recordOnSprite: {fileID: 21300000, guid: 15b13f88f97838a4b9378fea86a28e89, type: 3}
+  recordOffSprite: {fileID: 21300000, guid: 4d98da27b4dc5a04fabe60609f9b1ad2, type: 3}
+  sendSprite: {fileID: 21300000, guid: 4b2d73b815dfdc5459dea40a609ec4fe, type: 3}
+  replaySprite: {fileID: 21300000, guid: b7b15ed9dff41b1459cefefc09fcca3b, type: 3}
 --- !u!4 &784376429
 Transform:
   m_ObjectHideFlags: 0
