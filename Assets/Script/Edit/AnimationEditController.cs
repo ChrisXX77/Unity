@@ -6,7 +6,6 @@ using UnityEngine.SceneManagement;
 
 namespace MyTest
 {
-    
     public class AnimationEditController : MonoBehaviour
     {
         [Header("===Config Setting===")]
@@ -25,6 +24,7 @@ namespace MyTest
         private int currentFrameIndex = 0; // Track the current frame index
 
         private HashSet<int> replacedFrames = new HashSet<int>(); // Track replaced frames
+        private bool isPaused = false; // Track pause state
 
         public static HashSet<int> ReplacedFrameIndices { get; private set; } = new HashSet<int>(); // Static property to expose the replaced frame indices
 
@@ -78,10 +78,16 @@ namespace MyTest
 
         void Update()
         {
-            // Update the avatar's pose
-            if (motionData != null && motionData.motionFrames.Count > 0)
+            // Check for pause toggle using the space key
+            if (Input.GetKeyDown(KeyCode.Space))
             {
-                currentFrameIndex = (int)(Time.time * FPS) % motionData.motionFrames.Count; // Update the current frame index based on time
+                isPaused = !isPaused;
+            }
+
+            if (!isPaused && motionData != null && motionData.motionFrames.Count > 0)
+            {
+                // Update the current frame index based on time
+                currentFrameIndex = (int)(Time.time * FPS) % motionData.motionFrames.Count;
 
                 MuscleValues currentFrame = motionData.motionFrames[currentFrameIndex];
                 sourceAnimator.gameObject.transform.localPosition = currentFrame.position;
@@ -92,6 +98,11 @@ namespace MyTest
                     sourcePose.muscles[i] = currentFrame.muscleValues[i];
                 }
                 sourcePoseHandler.SetHumanPose(ref sourcePose);
+            }
+            else if (isPaused)
+            {
+                // While paused, update the sourcePose with the current pose
+                sourcePoseHandler.GetHumanPose(ref sourcePose);
             }
         }
 
